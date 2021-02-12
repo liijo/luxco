@@ -51,6 +51,10 @@ final class Luxco_Customisations {
 		add_action( 'rcp_edit_member_after', array( $this, 'luxco_add_member_edit_fields' ) );
 		add_action( 'rcp_user_profile_updated', array( $this, 'luxco_save_user_fields_on_profile_save'), 10 );
 		add_action( 'rcp_edit_member', array( $this, 'luxco_save_user_fields_on_profile_save'), 10 );
+		add_action( 'init', array( $this, 'luxco_create_docs_taxonomies'), 0 );
+		
+		add_shortcode( 'member_sidebar', array( $this, 'luxco_member_sidebar') );
+		add_shortcode( 'list_documents', array( $this, 'luxco_list_documents') );
 	}
 
 	/**
@@ -133,13 +137,44 @@ final class Luxco_Customisations {
 	    );
 	}
 
+	/**
+	 * Create taxonomy, type for the post type "Document".
+	 *
+	 */
+	function luxco_create_docs_taxonomies() {
+	    $labels = array(
+	        'name'              => _x( 'Types', 'taxonomy general name', 'textdomain' ),
+	        'singular_name'     => _x( 'Type', 'taxonomy singular name', 'textdomain' ),
+	        'search_items'      => __( 'Search Types', 'textdomain' ),
+	        'all_items'         => __( 'All Types', 'textdomain' ),
+	        'parent_item'       => __( 'Parent Type', 'textdomain' ),
+	        'parent_item_colon' => __( 'Parent Type:', 'textdomain' ),
+	        'edit_item'         => __( 'Edit Type', 'textdomain' ),
+	        'update_item'       => __( 'Update Type', 'textdomain' ),
+	        'add_new_item'      => __( 'Add New Type', 'textdomain' ),
+	        'new_item_name'     => __( 'New Type Name', 'textdomain' ),
+	        'menu_name'         => __( 'Type', 'textdomain' ),
+	    );
+	 
+	    $args = array(
+	        'hierarchical'      => true,
+	        'labels'            => $labels,
+	        'show_ui'           => true,
+	        'show_admin_column' => true,
+	        'query_var'         => true,
+	        'rewrite'           => array( 'slug' => 'type' ),
+	    );
+	 
+	    register_taxonomy( 'type', array( 'document' ), $args );
+	}
+
 	public function luxco_send_notification_post_created($post_id, $post, $update){
 		$slug = 'document';
     	if($slug   != $post->post_type) return;
     	$user		= get_userdata($user_id);
 		$to 		= 'lijo@mr-digital.co.uk'; 
 		$subject 	= __('Luxco document uploaded'); 
-		$message 	= 'Dear Customer, <br> Luxco has been a new document.'; 
+		$message 	= 'Dear Customer, <br> Luxco has been uploaded a new document.'; 
 		$headers[]  = 'Content-Type: text/html; charset=UTF-8';
 		$headers[]  = 'From: '.get_bloginfo('name').' <'.get_bloginfo('admin_email').'>';
 		wp_mail( $to, $subject, $message, $headers );
@@ -228,6 +263,128 @@ final class Luxco_Customisations {
 		$headers[]  = 'From: '.get_bloginfo('name').' <'.get_bloginfo('admin_email').'>';
 		wp_mail( $to, $subject, $message, $headers );
 
+	}
+
+	public function luxco_member_sidebar(){
+		ob_start();
+		if( ! is_user_logged_in() ) return;
+		$user = wp_get_current_user();
+		//print_r($user);
+		if ( ! in_array( 'customer', $user->roles ) ) return;
+		$logo  	  = get_user_meta( $user->ID, 'logo', true );
+		$company  = get_user_meta( $user->ID, 'company_name', true );
+		$location = get_user_meta( $user->ID, 'location', true );
+		$contact  = get_user_meta( $user->ID, 'contact_number', true );
+		$nxtVisit = get_field( 'next_visit', 'user_'.$user->ID );
+		$contract = get_field( 'contract_period', 'user_'.$user->ID );
+		$contract = $contract['start'].' - '.$contract['end'];
+		if(!empty($logo)) {
+			?><figure class="company-logo">
+				<?php echo wp_get_attachment_image($logo, 'full'); ?>
+			</figure><?php
+		}
+		?><ul class="company-details">
+			<?php if(!empty($company)) {
+				echo '<li>
+					<span class=""></span>
+					<p>'.__('Company Name').'</p>
+					'.$company.'
+				</li>';
+				echo '<li>
+					<span class=""></span>
+					<p>'.__('Location').'</p>
+					'.$location.'
+				</li>';
+				echo '<li>
+					<span class=""></span>
+					<p>'.__('Email address').'</p>
+					'.$user->user_email.'
+				</li>';
+				echo '<li>
+					<span class=""></span>
+					<p>'.__('Contact Number').'</p>
+					'.$contact.'
+				</li>';
+				echo '<li>
+					<span class=""></span>
+					<p>'.__('Contract period').'</p>
+					'.$contract.'
+				</li>';
+				echo '<li>
+					<span class=""></span>
+					<p>'.__('Next Visit Date').'</p>
+					'.$nxtVisit.'
+				</li>';
+			}?>
+		</ul><?php
+		return ob_get_clean();
+	}
+
+	public function luxco_list_documents(){
+		ob_start();
+		$terms = get_terms( array(
+		    'taxonomy' => 'type',
+		    'hide_empty' => false,
+		) );
+		if( ! empty($terms) ){
+			$i = 0;
+			echo '<ul class="nav nav-pills" id="pills-tab" role="tablist">';
+			foreach($terms as $term){
+				$cssClass = 'nav-link';
+				if($i == 0) $cssClass = 'nav-link active';
+				echo '<li  class="nav-item" role="presentation" id="'.$term->term_id.'">';
+				echo '<a class="'.$cssClass.'" id="pills-'.$term->term_id.'-tab" data-toggle="pill" href="#pills-'.$term->term_id.'" role="tab" aria-controls="pills-'.$term->term_id.'" aria-selected="true">';
+				echo $term->name;
+				echo '</a>';
+				echo '</li>';
+				$i++;
+			}
+			echo '</ul>';
+			echo '<div class="tab-content" id="pills-tabContent">';
+			$i = 0;
+			foreach($terms as $term){
+				$cssClass = 'tab-pane fade';
+				if($i == 0) $cssClass = 'tab-pane fade show active';
+				echo '<div class="'.$cssClass.'" id="pills-'.$term->term_id.'" role="tabpanel" aria-labelledby="pills-'.$term->term_id.'-tab">';
+				echo '<h3>'.$term->name.'</h3>';
+				$args = array(
+				    'post_type' => 'document',
+				    'tax_query' => array(
+				        array(
+				            'taxonomy' => 'type',
+				            'field'    => 'slug',
+				            'terms'    => $term->slug,
+				        ),
+				    ),
+				);
+				$query = new WP_Query( $args );
+				if($query->have_posts()){
+					echo '<ul class="documents">';
+					while($query->have_posts()){
+						echo '<li class="'.implode(' ',get_post_class()).'">';
+						$query->the_post();
+						if(!empty(get_field('preview')))
+							echo '<img src="'.get_field('preview').'" alt="'.get_the_title().'" />';
+						echo '<h4>'.get_the_title().'</h4>';
+						if(!empty(get_field('pdf'))){
+							$pdf = get_field('pdf');
+							echo '<div class="doc-actions">
+							<a href="#" class="print-doc"><span class=""></span>Print</a>
+							<a href="'.$pdf['url'].'" class="download-doc" download><span class=""></span>Download</a>
+							</div>';
+						}
+						echo '</li>';
+					}
+					echo '</ul>';
+				}
+				wp_reset_query();
+				echo '</div>';
+				$i++;
+			}
+			echo '</div>';
+		}
+		?><?php
+		return ob_get_clean();
 	}
 
 } // End Class

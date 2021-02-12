@@ -3,3 +3,7 @@
  *
  * This file will be loaded after all other theme stylesheets.
  */
+
+.site-sticky-menu.myfixed{
+	width: 100% !important;
+}
