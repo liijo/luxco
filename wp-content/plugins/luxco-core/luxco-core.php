@@ -55,6 +55,9 @@ final class Luxco_Customisations {
 		
 		add_shortcode( 'member_sidebar', array( $this, 'luxco_member_sidebar') );
 		add_shortcode( 'list_documents', array( $this, 'luxco_list_documents') );
+
+		add_action( 'wp_ajax_nopriv_get_docs', array( $this, 'luxco_get_docs' ) );
+		add_action( 'wp_ajax_get_docs', array( $this, 'luxco_get_docs' ) );
 	}
 
 	/**
@@ -73,6 +76,7 @@ final class Luxco_Customisations {
 	 */
 	public function luxco_customisations_js() {
 		wp_enqueue_script( 'custom-js', plugins_url( '/custom/custom.js', __FILE__ ), array( 'jquery' ) );
+		wp_localize_script( 'custom-js', 'ajax_object', array( 'ajaxurl' => admin_url( 'admin-ajax.php' ) ) );
 	}
 
 	/**
@@ -286,34 +290,46 @@ final class Luxco_Customisations {
 		?><ul class="company-details">
 			<?php if(!empty($company)) {
 				echo '<li>
-					<span class=""></span>
+					<span class="icon-Company"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span><span class="path5"></span><span class="path6"></span><span class="path7"></span><span class="path8"></span><span class="path9"></span><span class="path10"></span></span>
 					<p>'.__('Company Name').'</p>
+					<b>
 					'.$company.'
+					</b>
 				</li>';
 				echo '<li>
-					<span class=""></span>
+					<span class="icon-Location"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span>
 					<p>'.__('Location').'</p>
+					<b>
 					'.$location.'
+					</b>
 				</li>';
 				echo '<li>
-					<span class=""></span>
-					<p>'.__('Email address').'</p>
+					<span class="icon-Envelope"><span class="path1"></span><span class="path2"></span></span>
+					<p>'.__('Email Address').'</p>
+					<b>
 					'.$user->user_email.'
+					</b>
 				</li>';
 				echo '<li>
-					<span class=""></span>
+					<span class="icon-Contact"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span>
 					<p>'.__('Contact Number').'</p>
+					<b>
 					'.$contact.'
+					</b>
 				</li>';
 				echo '<li>
-					<span class=""></span>
-					<p>'.__('Contract period').'</p>
+					<span class="icon-Contract-period"><span class="path1"></span><span class="path2"></span></span>
+					<p>'.__('Contract Period').'</p>
+					<b>
 					'.$contract.'
+					</b>
 				</li>';
 				echo '<li>
-					<span class=""></span>
+					<span class="icon-Next-Visit-Date"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span><span class="path5"></span><span class="path6"></span><span class="path7"></span><span class="path8"></span><span class="path9"></span></span>
 					<p>'.__('Next Visit Date').'</p>
+					<b>
 					'.$nxtVisit.'
+					</b>
 				</li>';
 			}?>
 		</ul><?php
@@ -329,24 +345,68 @@ final class Luxco_Customisations {
 		if( ! empty($terms) ){
 			$i = 0;
 			echo '<ul class="nav nav-pills" id="pills-tab" role="tablist">';
+			echo '<li class="nav-item" role="presentation" id="all">';
+			echo '<a class="nav-link active" id="pills-all-tab" data-toggle="pill" href="#pills-all" role="tab" aria-controls="pills-all" aria-selected="true">All Documents</a>';
+			echo '</li>';
 			foreach($terms as $term){
 				$cssClass = 'nav-link';
-				if($i == 0) $cssClass = 'nav-link active';
 				echo '<li  class="nav-item" role="presentation" id="'.$term->term_id.'">';
-				echo '<a class="'.$cssClass.'" id="pills-'.$term->term_id.'-tab" data-toggle="pill" href="#pills-'.$term->term_id.'" role="tab" aria-controls="pills-'.$term->term_id.'" aria-selected="true">';
+				echo '<a class="nav-link" id="pills-'.$term->term_id.'-tab" data-toggle="pill" href="#pills-'.$term->term_id.'" role="tab" aria-controls="pills-'.$term->term_id.'" aria-selected="true">';
 				echo $term->name;
 				echo '</a>';
 				echo '</li>';
-				$i++;
 			}
+			echo '<li class="nav-item" role="presentation" id="contract">';
+			echo '<a class="nav-link" id="pills-contract-tab" data-toggle="pill" href="#pills-contract" role="tab" aria-controls="pills-contract" aria-selected="true">Contracts</a>';
+			echo '</li>';
 			echo '</ul>';
 			echo '<div class="tab-content" id="pills-tabContent">';
-			$i = 0;
+			echo '<div class="tab-pane fade show active" id="pills-all" role="tabpanel" aria-labelledby="pills-all-tab">';
+			echo '<h3 class="align-left">All Documents</h3>';
+			echo '<div class="align-right">Sort files by: 
+			<select name="doc-sorter">
+				<option value="date">Date</option>
+				<option value="title">Name</option>
+			</select>
+			</div>';
+			echo '<div class="clearfix"></div>';
+			$args = array(
+			    'post_type' => 'document',
+			    'showposts' => -1
+			);
+			$query = new WP_Query( $args );
+			if($query->have_posts()){
+				echo '<ul class="documents">';
+				while($query->have_posts()){
+					echo '<li class="'.implode(' ',get_post_class()).'">';
+					$query->the_post();
+					if(!empty(get_field('preview')))
+						echo '<figure><img src="'.get_field('preview').'" alt="'.get_the_title().'" /></figure>';
+					echo '<h4>'.get_the_title().'</h4>';
+					if(!empty(get_field('pdf'))){
+						$pdf = get_field('pdf');
+						echo '<div class="doc-actions">
+						<a href="#" class="print-doc"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
+						<a href="'.$pdf['url'].'" class="download-doc" download><span class="icon-Download"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span></a>
+						</div>';
+					}
+					echo '</li>';
+				}
+				echo '</ul>';
+			}
+			wp_reset_query();	
+			echo '</div>';
 			foreach($terms as $term){
 				$cssClass = 'tab-pane fade';
-				if($i == 0) $cssClass = 'tab-pane fade show active';
 				echo '<div class="'.$cssClass.'" id="pills-'.$term->term_id.'" role="tabpanel" aria-labelledby="pills-'.$term->term_id.'-tab">';
-				echo '<h3>'.$term->name.'</h3>';
+				echo '<h3 class="align-left">'.$term->name.'</h3>';
+				echo '<div class="align-right">Sort files by: 
+				<select name="doc-sorter" data-term="'.$term->slug.'">
+					<option value="date">Date</option>
+					<option value="title">Name</option>
+				</select>
+				</div>';
+				echo '<div class="clearfix"></div>';
 				$args = array(
 				    'post_type' => 'document',
 				    'tax_query' => array(
@@ -364,13 +424,13 @@ final class Luxco_Customisations {
 						echo '<li class="'.implode(' ',get_post_class()).'">';
 						$query->the_post();
 						if(!empty(get_field('preview')))
-							echo '<img src="'.get_field('preview').'" alt="'.get_the_title().'" />';
+							echo '<figure><img src="'.get_field('preview').'" alt="'.get_the_title().'" /></figure>';
 						echo '<h4>'.get_the_title().'</h4>';
 						if(!empty(get_field('pdf'))){
 							$pdf = get_field('pdf');
 							echo '<div class="doc-actions">
-							<a href="#" class="print-doc"><span class=""></span>Print</a>
-							<a href="'.$pdf['url'].'" class="download-doc" download><span class=""></span>Download</a>
+							<a href="#" class="print-doc"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
+							<a href="'.$pdf['url'].'" class="download-doc" download><span class="icon-Download"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span></a>
 							</div>';
 						}
 						echo '</li>';
@@ -379,12 +439,61 @@ final class Luxco_Customisations {
 				}
 				wp_reset_query();
 				echo '</div>';
-				$i++;
 			}
+			echo '<div class="tab-pane fade" id="pills-contract" role="tabpanel" aria-labelledby="pills-contract-tab">';
+			echo '<h3 class="align-left">Contract</h3>';
+			echo '<div class="clearfix"></div>';
+		
+			echo '</div>';
 			echo '</div>';
 		}
 		?><?php
 		return ob_get_clean();
+	}
+
+	public function luxco_get_docs(){
+		$html = '';
+		$taxonomy = array();
+		$args = array(
+		    'post_type' => 'document',
+			'order'   => 'ASC',
+		    'showposts' => -1,
+		    'orderby'	=> $_POST['sortby'],
+		);
+		if($_POST['taxonomy']) 
+			$args = array(
+			    'post_type' => 'document',
+			    'showposts' => -1,
+			    'order'   => 'ASC',
+		    	'orderby'	=> $_POST['sortby'],
+			    'tax_query' => array(
+			        array(
+			            'taxonomy' => 'type',
+			            'field'    => 'slug',
+			            'terms'    => $_POST['taxonomy'],
+			        ),
+			    ),
+			);
+		$query = new WP_Query( $args );
+		if($query->have_posts()){
+			while($query->have_posts()){
+				$html .= '<li class="'.implode(' ',get_post_class()).'">';
+				$query->the_post();
+				if(!empty(get_field('preview')))
+					$html .= '<figure><img src="'.get_field('preview').'" alt="'.get_the_title().'" /></figure>';
+				$html .= '<h4>'.get_the_title().'</h4>';
+				if(!empty(get_field('pdf'))){
+					$pdf = get_field('pdf');
+					$html .= '<div class="doc-actions">
+					<a href="#" class="print-doc"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
+					<a href="'.$pdf['url'].'" class="download-doc" download><span class="icon-Download"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span></a>
+					</div>';
+				}
+				$html .= '</li>';
+			}
+		}
+		wp_send_json($html);
+		die;
 	}
 
 } // End Class

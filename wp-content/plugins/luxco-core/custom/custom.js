@@ -10,4 +10,24 @@ jQuery(document).ready(function($){
 			$('#pills-tabContent '+divId).addClass('show active');
 		}
 	});
+
+	$('select[name=doc-sorter]').change(function(){
+		var select = $(this),
+		sortby = select.val(),
+		taxonomy = select.data('term');
+		select.parents('.tab-pane').find('ul.documents').addClass('loading');
+		$.ajax({
+	        url: ajax_object.ajaxurl,
+	        type: 'post',
+	        data: {
+	            'action' :'get_docs',
+	            'taxonomy' : taxonomy,
+	            'sortby' : sortby
+	        },
+	        success: function( response ) {
+	        	select.parents('.tab-pane').find('ul.documents').html(response);
+	        	select.parents('.tab-pane').find('ul.documents').removeClass('loading');
+	        },
+	    });
+	});
 });
