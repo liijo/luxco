@@ -51,6 +51,7 @@ final class Luxco_Customisations {
 		add_action( 'rcp_edit_member_after', array( $this, 'luxco_add_member_edit_fields' ) );
 		add_action( 'rcp_user_profile_updated', array( $this, 'luxco_save_user_fields_on_profile_save'), 10 );
 		add_action( 'rcp_edit_member', array( $this, 'luxco_save_user_fields_on_profile_save'), 10 );
+		add_action( 'rcp_form_processing', array( $this, 'luxco_save_user_fields_on_profile_save'), 10, 2 );
 		add_action( 'init', array( $this, 'luxco_create_docs_taxonomies'), 0 );
 		
 		add_shortcode( 'member_sidebar', array( $this, 'luxco_member_sidebar') );
@@ -205,7 +206,7 @@ final class Luxco_Customisations {
 		</p>
 		<p>
 			<label for="contact"><?php _e( 'Contact Number', 'luxco' ); ?></label>
-			<input name="contact" id="contact" type="text" value="<?php echo esc_attr( $contact ); ?>"/>
+			<input name="contact_number" id="contact_number" type="text" value="<?php echo esc_attr( $contact ); ?>"/>
 		</p>
 		<?php
 	}
@@ -238,6 +239,15 @@ final class Luxco_Customisations {
 				<p class="description"><?php _e( 'The member\'s location', 'rcp' ); ?></p>
 			</td>
 		</tr>
+		<tr valign="top">
+			<th scope="row" valign="top">
+				<label for="contact"><?php _e( 'Contact Number', 'rcp' ); ?></label>
+			</th>
+			<td>
+				<input name="contact" id="contact" type="text" value="<?php echo esc_attr( $contact ); ?>"/>
+				<p class="description"><?php _e( 'The member\'s contact', 'rcp' ); ?></p>
+			</td>
+		</tr>
 		<?php
 	}
 
@@ -245,7 +255,7 @@ final class Luxco_Customisations {
 	 * Stores the information submitted profile update
 	 *
 	 */
-	function luxco_save_user_fields_on_profile_save( $user_id ) {
+	function luxco_save_user_fields_on_profile_save( $posted, $user_id ) {
 
 		if( ! empty( $_POST['company_name'] ) ) {
 			update_user_meta( $user_id, 'company_name', sanitize_text_field( $_POST['company_name'] ) );
@@ -338,6 +348,7 @@ final class Luxco_Customisations {
 
 	public function luxco_list_documents(){
 		ob_start();
+		if( ! is_user_logged_in() ) return;
 		$terms = get_terms( array(
 		    'taxonomy' => 'type',
 		    'hide_empty' => false,
@@ -386,7 +397,7 @@ final class Luxco_Customisations {
 					if(!empty(get_field('pdf'))){
 						$pdf = get_field('pdf');
 						echo '<div class="doc-actions">
-						<a href="#" class="print-doc"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
+						<a href="'.$pdf['url'].'" class="print-doc" target="_blank"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
 						<a href="'.$pdf['url'].'" class="download-doc" download><span class="icon-Download"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span></a>
 						</div>';
 					}
@@ -429,7 +440,7 @@ final class Luxco_Customisations {
 						if(!empty(get_field('pdf'))){
 							$pdf = get_field('pdf');
 							echo '<div class="doc-actions">
-							<a href="#" class="print-doc"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
+							<a href="'.$pdf['url'].'" class="print-doc" target="_blank"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
 							<a href="'.$pdf['url'].'" class="download-doc" download><span class="icon-Download"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span></a>
 							</div>';
 						}
@@ -485,7 +496,7 @@ final class Luxco_Customisations {
 				if(!empty(get_field('pdf'))){
 					$pdf = get_field('pdf');
 					$html .= '<div class="doc-actions">
-					<a href="#" class="print-doc"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
+					<a href="'.$pdf['url'].'" class="print-doc" target="_blank"><span class="icon-Print"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span></a>
 					<a href="'.$pdf['url'].'" class="download-doc" download><span class="icon-Download"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span></a>
 					</div>';
 				}

@@ -345,3 +345,17 @@ ul.documents li figure{
 	border: 0;
 	outline: 0;
 }
+.pp-modal label{
+	color: #000 !important;
+}
+.pp-modal input[type=submit]{
+	padding: 18px 25px;
+	color: #fff !important;
+	background-color: rgb(27, 51, 83) !important;
+}
+#rcp_registration_form .rcp_login_link {
+    display: none;
+}
+figure.company-logo {
+    text-align: center;
+}
