@@ -46,6 +46,7 @@ final class Luxco_Customisations {
 		add_action( 'profile_update',  	  array( $this, 'luxco_profile_admin_update' ), 10, 2 );
 		add_action( 'init', 			  array( $this, 'luxco_custom_post_type' ));
 		add_action(	'save_post', 		  array( $this, 'luxco_send_notification_post_created' ), 10, 3);
+
 		add_action( 'rcp_after_password_registration_field', array( $this, 'luxco_add_user_fields' ) );
 		add_action( 'rcp_profile_editor_after', array( $this, 'luxco_add_user_fields' ) );
 		add_action( 'rcp_edit_member_after', array( $this, 'luxco_add_member_edit_fields' ) );
@@ -177,12 +178,14 @@ final class Luxco_Customisations {
 		$slug = 'document';
     	if($slug   != $post->post_type) return;
     	$user		= get_userdata($user_id);
-		$to 		= 'lijo@mr-digital.co.uk'; 
 		$subject 	= __('Luxco document uploaded'); 
 		$message 	= 'Dear Customer, <br> Luxco has been uploaded a new document.'; 
 		$headers[]  = 'Content-Type: text/html; charset=UTF-8';
 		$headers[]  = 'From: '.get_bloginfo('name').' <'.get_bloginfo('admin_email').'>';
-		wp_mail( $to, $subject, $message, $headers );
+		$members = rcp_get_members();
+		foreach($members as $user){
+			wp_mail( $user->user_email, $subject, $message, $headers );
+		}
 	}
 
 	/**
